@@ -1,6 +1,6 @@
 1. Clonar repositorio:
 bash
-git clone URL_DEL_REPOSITORIO
+git clone https://github.com/matiasl34l/proyecto_inicial.git
 
 Entrar al directorio:
 bash
@@ -50,7 +50,7 @@ Email
 Password
 
 Usuarios de prueba:
-En el panel de admin en el apartado de "Usuario" seleccionar "+Add" e ingresar:
+En el panel de admin en el apartado de "Etiquetas", en caso de no existir las etiquetas "Fotografía" y "Festival" agregarlas seleccionando "ADD ETIQUETA", si ya existian, en "Home" ir al apartado "Usuario" seleccionar "+Add" e ingresar:
 Usuario 1
 Nombre: Sansano 1
 Gustos: Arte, Deportes, Naturaleza, Fiesta, Social, Comunidad, Aire Libre, Feria, Bienestar, Creatividad, Fotografia
