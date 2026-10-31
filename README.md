@@ -32,7 +32,7 @@ Ejecutar:
 bash
 python manage.py runserver
 
-Abrir http://127.0.0.1:8000/ desde visual studio code, desde un navegador no se verá.
+IMPORTANTE: Abrir http://127.0.0.1:8000/ desde visual studio code, desde un navegador no se verá.
 
 Datos de prueba:
 Para probar la funcionalidad principal se deben crear usuarios y eventos desde el panel de administración.
