@@ -53,12 +53,16 @@ Usuarios de prueba:
 En el panel de admin en el apartado de "Etiquetas", en caso de no existir las etiquetas "Fotografía" y "Festival" agregarlas seleccionando "ADD ETIQUETA", si ya existian, en "Home" ir al apartado "Usuario" seleccionar "+Add" e ingresar:
 Usuario 1
 Nombre: Sansano 1
-Gustos: Arte, Deportes, Naturaleza, Fiesta, Social, Comunidad, Aire Libre, Feria, Bienestar, Creatividad, Fotografia
+Gustos: Arte, Deportes, Naturaleza, Fiesta, Social, Comunidad, Aire Libre, Feria, Bienestar, Creatividad, Fotografía
+Latitud: -33.0482
+Longitud: -71.6107
 Distancia máxima: 20
 Luego seleccionar "Save and add another"
 Usuario 2
 Nombre: Sansano 2
 Gustos: Seleccionar "Choose all gustos"
+Latitud: -33.041
+Longitud: -71.615
 Distancia máxima: 30
 Luego en "Home" en el apartado de "Usuario" seleccionar "Change" y desmarcar en "ACTIVO" a sansano 2, luego de probar a sansano 1 desmarcar a sansano 1 y marcar a sansao 2, luego de cada vez que se marque o desmarque seleccionar "Save"
 
