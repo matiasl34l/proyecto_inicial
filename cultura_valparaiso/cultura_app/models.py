@@ -1,13 +1,30 @@
+from django.conf import settings
+from django.core.validators import MinValueValidator
 from django.db import models
 
 # Create your models here.
 class Usuario(models.Model):
-    nombre = models.CharField(max_length=50)
+    cuenta = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name='perfil_cultural',
+        null=True,
+        blank=True,
+    )
+    nombre = models.CharField(max_length=150)
     gustos = models.ManyToManyField('Etiqueta', related_name='usuarios', blank=True)
     latitud = models.FloatField(default=-33.0472)
     longitud = models.FloatField(default=-71.6127)
-    distancia_maxima = models.IntegerField()
+    distancia_maxima = models.IntegerField(validators=[MinValueValidator(1)])
     activo = models.BooleanField(default=True)
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(distancia_maxima__gte=1),
+                name='usuario_distancia_min_1_km',
+            ),
+        ]
 
     def __str__(self):
         return self.nombre

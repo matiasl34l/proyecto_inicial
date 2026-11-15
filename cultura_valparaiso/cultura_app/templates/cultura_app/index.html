@@ -6,68 +6,288 @@
     <title>Eventos Valparaíso</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <style>
-        #map {
-            height: 500px;
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            color: #172033;
+            font-family: Arial, sans-serif;
+            font-size: 14px;
+            background: #f3f6fa;
+        }
+        header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            padding: .65rem 1rem;
+            background: #fff;
+            border-bottom: 1px solid #dce3ec;
+        }
+        header h1 { margin: 0; font-size: 1.15rem; }
+        header nav { display: flex; align-items: center; gap: .75rem; }
+        header a { color: #175cd3; }
+        header form { margin: 0; }
+        button, input { font: inherit; }
+        button { cursor: pointer; }
+        .layout {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) 320px;
+            gap: .75rem;
+            height: calc(100vh - 56px);
+            min-height: 460px;
+            padding: .75rem;
+        }
+        .map-panel, .side-panel {
+            min-height: 0;
+            overflow: auto;
+            background: #fff;
+            border: 1px solid #dce3ec;
+            border-radius: 10px;
+        }
+        #map { width: 100%; height: 100%; min-height: 450px; }
+        .side-panel { padding: .8rem; }
+        .search-form { display: flex; gap: .4rem; margin-bottom: .8rem; }
+        .search-form input {
             width: 100%;
+            min-width: 0;
+            padding: .55rem;
+            border: 1px solid #98a2b3;
+            border-radius: 6px;
+        }
+        .search-form button, .focus-event, .logout-button {
+            padding: .5rem .65rem;
+            color: #fff;
+            border: 0;
+            border-radius: 6px;
+            background: #175cd3;
+        }
+        .search-form .clear-search {
+            display: inline-flex;
+            flex: 0 0 34px;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            color: #344054;
+            border: 1px solid #cbd5e1;
+            background: #fff;
+            font-size: 1.25rem;
+            text-decoration: none;
+        }
+        .search-form .clear-search:hover { background: #f2f4f7; }
+        .search-results h2 { margin: .4rem 0; font-size: .95rem; }
+        .event-card {
+            padding: .6rem 0;
+            border-bottom: 1px solid #e4e7ec;
+        }
+        .event-card h3 { margin: 0 0 .35rem; font-size: .95rem; }
+        .event-card p { margin: .2rem 0; color: #475467; font-size: .85rem; }
+        .focus-event { margin-top: .4rem; }
+        details { border-top: 1px solid #dce3ec; }
+        summary {
+            padding: .8rem 0;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        .empty-message, .notice { color: #475467; line-height: 1.5; }
+        .visually-hidden {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
+        .notice { padding: .75rem; background: #fff4e5; border-radius: 6px; }
+        .map-legend { padding: .5rem 0; color: #475467; font-size: .85rem; }
+        .user-dot {
+            width: 16px;
+            height: 16px;
+            border: 3px solid white;
+            border-radius: 50%;
+            background: #2563eb;
+            box-shadow: 0 1px 5px #344054;
+        }
+        @media (max-width: 760px) {
+            .layout {
+                grid-template-columns: 1fr;
+                height: auto;
+                min-height: 0;
+            }
+            .map-panel { height: 55vh; min-height: 360px; }
+            .side-panel { overflow: visible; }
+            header { align-items: flex-start; }
+            header nav { flex-wrap: wrap; justify-content: flex-end; }
         }
     </style>
 </head>
 <body>
-    <h1>Mapa de eventos de Valparaíso</h1>
-    <div id="map"></div>
+    {% if messages %}
+    {% for message in messages %}<p role="status">{{ message }}</p>{% endfor %}
+    {% endif %}
 
+    <header>
+        <h1>Cultura Valparaíso</h1>
+        <nav>
+            <span>Hola, <strong>{{ usuario.nombre }}</strong></span>
+            <a href="{% url 'perfil' %}">Mis preferencias</a>
+            <form method="post" action="{% url 'salir' %}">
+                {% csrf_token %}
+                <button class="logout-button" type="submit">Cerrar sesión</button>
+            </form>
+        </nav>
+    </header>
+
+    <main class="layout">
+        <section class="map-panel" aria-label="Mapa de eventos">
+            <div id="map"></div>
+        </section>
+
+        <aside class="side-panel">
+            <form class="search-form" method="get" action="{% url 'inicio' %}">
+                <label for="buscar-evento" class="visually-hidden">Buscar eventos</label>
+                <input id="buscar-evento" name="q" type="search" maxlength="100"
+                       placeholder="Nombre, lugar o etiqueta" value="{{ consulta }}">
+                <button type="submit">Buscar</button>
+                {% if consulta %}
+                <a class="clear-search" href="{% url 'inicio' %}" aria-label="Deshacer búsqueda" title="Deshacer búsqueda">×</a>
+                {% endif %}
+            </form>
+
+            {% if consulta %}
+            <section class="search-results" aria-live="polite">
+                <h2>Resultados de búsqueda</h2>
+                {% for evento in resultados_busqueda %}
+                <article class="event-card">
+                    <h3>{{ evento.nombre }}</h3>
+                    <p>{{ evento.direccion }}</p>
+                    <p>{{ evento.fecha|date:"d/m/Y" }}{% if evento.hora %} · {{ evento.hora|time:"H:i" }}{% endif %}</p>
+                    <p>
+                        {% for etiqueta in evento.etiquetas_activas %}
+                            {{ etiqueta.nombre }}{% if not forloop.last %}, {% endif %}
+                        {% empty %}
+                            Sin etiquetas activas
+                        {% endfor %}
+                    </p>
+                    {% if evento.pk in eventos_mapa_ids %}
+                    <button class="focus-event" type="button" data-event-id="{{ evento.pk }}">Ver en el mapa</button>
+                    {% else %}
+                    <p class="empty-message">Este evento no tiene una ubicación válida en el mapa.</p>
+                    {% endif %}
+                </article>
+                {% empty %}
+                <p class="empty-message">No se encontraron eventos activos con “{{ consulta }}”.</p>
+                {% endfor %}
+            </section>
+            {% endif %}
+
+            <details>
+                <summary>Recomendaciones</summary>
+                {% for recomendacion in recomendaciones %}
+                <article class="event-card">
+                    <h3>{{ recomendacion.evento.nombre }}</h3>
+                    <p>{{ recomendacion.evento.direccion }}</p>
+                    <p>{{ recomendacion.coincidencias }} gustos en común · {{ recomendacion.distancia }} km</p>
+                    <p>
+                        {% for etiqueta in recomendacion.evento.etiquetas_activas %}
+                            {{ etiqueta.nombre }}{% if not forloop.last %}, {% endif %}
+                        {% empty %}
+                            Sin etiquetas activas
+                        {% endfor %}
+                    </p>
+                    <button class="focus-event" type="button" data-event-id="{{ recomendacion.evento.pk }}">Ver en el mapa</button>
+                </article>
+                {% empty %}
+                <p class="empty-message">Aún no hay eventos que coincidan con tus gustos y distancia. Usa Buscar para explorar todos los eventos.</p>
+                {% endfor %}
+            </details>
+
+            {% if not eventos_mapa %}
+            <p class="empty-message">No hay eventos activos con coordenadas válidas para mostrar en el mapa.</p>
+            {% endif %}
+            {% if eventos_sin_coordenadas %}
+            <p class="notice">{{ eventos_sin_coordenadas }} evento(s) activo(s) no tienen coordenadas válidas y no pueden aparecer en el mapa.</p>
+            {% endif %}
+            <p class="map-legend">Los eventos activos se muestran en el mapa aunque no coincidan con tus gustos.</p>
+        </aside>
+    </main>
+
+    {{ eventos_mapa|json_script:"eventos-mapa-data" }}
+    {{ ubicacion_usuario|json_script:"ubicacion-usuario-data" }}
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        const map = L.map('map').setView([-33.0472, -71.6127], 13);
+        const eventos = JSON.parse(document.getElementById('eventos-mapa-data').textContent);
+        const usuario = JSON.parse(document.getElementById('ubicacion-usuario-data').textContent);
+        const mapa = L.map('map').setView([-33.0472, -71.6127], 13);
+        const marcadores = new Map();
+        const limites = [];
 
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 19,
             attribution: '&copy; OpenStreetMap contributors'
-        }).addTo(map);
+        }).addTo(mapa);
 
-        {% if usuario %}
-        const ubicacionUsuario = [{{ usuario.latitud }}, {{ usuario.longitud }}];
-        map.setView(ubicacionUsuario, 13);
-        L.circleMarker(ubicacionUsuario, {
-            radius: 9,
-            color: '#ffffff',
-            weight: 2,
-            fillColor: '#2563eb',
-            fillOpacity: 1
-        }).addTo(map).bindPopup('<strong>Tu ubicación</strong><br>{{ usuario.nombre|escapejs }}');
-        {% endif %}
+        if (usuario) {
+            const ubicacion = [usuario.latitud, usuario.longitud];
+            const iconoUsuario = L.divIcon({
+                className: '',
+                html: '<div class="user-dot"></div>',
+                iconSize: [16, 16],
+                iconAnchor: [8, 8]
+            });
+            const marcadorUsuario = L.marker(ubicacion, {
+                icon: iconoUsuario,
+                title: 'Tu ubicación',
+                zIndexOffset: 1000
+            }).addTo(mapa);
+            const popupUsuario = document.createElement('strong');
+            popupUsuario.textContent = `Tu ubicación: ${usuario.nombre}`;
+            marcadorUsuario.bindPopup(popupUsuario);
+            limites.push(ubicacion);
+        }
 
-        {% for evento in eventos %}
-        L.marker([{{ evento.latitud }}, {{ evento.longitud }}])
-            .addTo(map)
-            .bindPopup(
-                '<strong>{{ evento.nombre|escapejs }}</strong><br>' +
-                '{{ evento.direccion|escapejs }}<br>' +
-                '{{ evento.fecha|date:"d/m/Y" }}{% if evento.hora %} - {{ evento.hora|time:"H:i" }}{% endif %}<br>' +
-                '<strong>Etiquetas:</strong> {% for etiqueta in evento.etiquetas.all %}{{ etiqueta.nombre|escapejs }}{% if not forloop.last %}, {% endif %}{% empty %}Sin etiquetas{% endfor %}'
-            );
-        {% endfor %}
+        for (const evento of eventos) {
+            const contenido = document.createElement('div');
+            const titulo = document.createElement('strong');
+            titulo.textContent = evento.nombre;
+            contenido.append(titulo, document.createElement('br'));
+            contenido.append(document.createTextNode(evento.direccion));
+            contenido.append(document.createElement('br'));
+            contenido.append(document.createTextNode(`${evento.fecha}${evento.hora ? ` · ${evento.hora}` : ''}`));
+            contenido.append(document.createElement('br'));
+
+            const etiquetas = document.createElement('span');
+            etiquetas.textContent = `Etiquetas: ${evento.etiquetas.length ? evento.etiquetas.join(', ') : 'Sin etiquetas activas'}`;
+            contenido.append(etiquetas);
+
+            const marcador = L.marker([evento.latitud, evento.longitud], {
+                title: evento.nombre
+            }).addTo(mapa).bindPopup(contenido);
+            marcadores.set(String(evento.id), marcador);
+            limites.push([evento.latitud, evento.longitud]);
+        }
+
+        if (limites.length > 1) {
+            mapa.fitBounds(limites, { padding: [32, 32], maxZoom: 14 });
+        } else if (limites.length === 1) {
+            mapa.setView(limites[0], 14);
+        }
+
+        document.querySelectorAll('.focus-event').forEach((boton) => {
+            boton.addEventListener('click', () => {
+                const marcador = marcadores.get(boton.dataset.eventId);
+                if (!marcador) {
+                    return;
+                }
+                mapa.flyTo(marcador.getLatLng(), 16, { duration: 0.8 });
+                marcador.openPopup();
+            });
+        });
+
+        window.addEventListener('load', () => mapa.invalidateSize());
     </script>
-
-    <h2>Eventos recomendados</h2>
-
-    {% for r in recomendaciones %}
-    <div>
-        <h3>{{ r.evento.nombre }}</h3>
-        <p>Coincidencias: {{ r.coincidencias }}</p>
-        <p>Distancia: {{ r.distancia }} km</p>
-        <p>Dirección: {{ r.evento.direccion }}</p>
-        <p>Etiquetas:
-            {% for etiqueta in r.evento.etiquetas.all %}
-                {{ etiqueta.nombre }}{% if not forloop.last %}, {% endif %}
-            {% empty %}
-                Sin etiquetas
-            {% endfor %}
-        </p>
-    </div>
-    <hr>
-    {% empty %}
-    <p>No hay eventos recomendados todavía.</p>
-    {% endfor %}
 </body>
 </html>

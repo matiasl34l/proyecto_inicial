@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Crear cuenta · Cultura Valparaíso</title>
+</head>
+<body>
+    <main>
+        <h1>Crear cuenta</h1>
+        <p>Después podrás completar tus preferencias.</p>
+        <form method="post">
+            {% csrf_token %}
+            {{ form.non_field_errors }}
+            {% for field in form %}
+            <p>
+                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                {{ field }}
+                {{ field.errors }}
+                {% if field.help_text %}<small>{{ field.help_text }}</small>{% endif %}
+            </p>
+            {% endfor %}
+            <button type="submit">Crear cuenta</button>
+        </form>
+        <p>¿Ya tienes una cuenta? <a href="{% url 'ingresar' %}">Iniciar sesión</a></p>
+    </main>
+</body>
+</html>

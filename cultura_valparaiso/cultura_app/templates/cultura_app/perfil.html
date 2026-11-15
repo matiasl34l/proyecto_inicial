@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Tus preferencias · Cultura Valparaíso</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 900px; margin: 2rem auto; padding: 0 1rem; }
+        #map { height: 400px; width: 100%; margin: 1rem 0; }
+        .errorlist { color: #b91c1c; }
+        fieldset { border: 1px solid #bbb; padding: 1rem; }
+        .actions { display: flex; flex-wrap: wrap; gap: .75rem; margin: .75rem 0; }
+    </style>
+</head>
+<body>
+    <main>
+        {% if cuenta_inactiva %}
+        <h1>Cuenta desactivada</h1>
+        <p>Tu perfil está desactivado. Contacta a la administración para volver a usarlo.</p>
+        <form method="post" action="{% url 'salir' %}">
+            {% csrf_token %}
+            <button type="submit">Cerrar sesión</button>
+        </form>
+        {% else %}
+        <h1>Completa tus preferencias</h1>
+        <p>Usuario: <strong>{{ request.user.get_username }}</strong></p>
+        <p>Selecciona al menos dos gustos.</p>
+
+        <form method="post" id="perfil-form" data-geocode-url="{% url 'buscar_direccion' %}">
+            {% csrf_token %}
+            {{ form.non_field_errors }}
+
+            <fieldset>
+                <legend>Mis gustos</legend>
+                {{ form.gustos.errors }}
+                {% for opcion in form.gustos %}
+                <label>{{ opcion.tag }} {{ opcion.choice_label }}</label><br>
+                {% empty %}
+                <p>No hay etiquetas activas disponibles. Contacta a la administración.</p>
+                {% endfor %}
+                <small>{{ form.gustos.help_text }}</small>
+            </fieldset>
+
+            <fieldset>
+                <legend>Mi ubicación</legend>
+                <p>Escribe una dirección para buscarla, usa la ubicación de tu dispositivo o haz clic en el mapa para colocar el marcador.</p>
+                <p>La ubicación elegida se guarda en tu perfil para calcular la distancia a los eventos.</p>
+                <label for="direccion">Dirección</label>
+                <input id="direccion" type="text" maxlength="200" autocomplete="street-address">
+                <div class="actions">
+                    <button type="button" id="buscar-direccion">Buscar dirección</button>
+                    <button type="button" id="usar-ubicacion">Usar mi ubicación</button>
+                </div>
+                <p id="ubicacion-mensaje" role="status" aria-live="polite"></p>
+                {{ form.latitud }}
+                {{ form.latitud.errors }}
+                {{ form.longitud }}
+                {{ form.longitud.errors }}
+                {{ form.ubicacion_confirmada }}
+                {{ form.ubicacion_confirmada.errors }}
+                <div id="map" aria-label="Selecciona tu ubicación en el mapa"></div>
+                <small>
+                    Mapa y búsqueda de direcciones: ©
+                    <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap contributors</a>.
+                    Al buscar, la dirección se envía al servicio Nominatim de OpenStreetMap.
+                </small>
+            </fieldset>
+
+            <p>
+                <label for="{{ form.distancia_maxima.id_for_label }}">{{ form.distancia_maxima.label }}</label>
+                {{ form.distancia_maxima }}
+                {{ form.distancia_maxima.errors }}
+                <small>{{ form.distancia_maxima.help_text }}</small>
+            </p>
+            <button type="submit">Guardar y ver el mapa de eventos</button>
+        </form>
+
+        <form method="post" action="{% url 'salir' %}">
+            {% csrf_token %}
+            <button type="submit">Cerrar sesión</button>
+        </form>
+        {% endif %}
+    </main>
+
+    {% if not cuenta_inactiva %}
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        const form = document.getElementById('perfil-form');
+        const latitudInput = document.getElementById('id_latitud');
+        const longitudInput = document.getElementById('id_longitud');
+        const ubicacionConfirmadaInput = document.getElementById('id_ubicacion_confirmada');
+        const mensaje = document.getElementById('ubicacion-mensaje');
+        const latitudInicial = Number(latitudInput.value);
+        const longitudInicial = Number(longitudInput.value);
+        const centroInicial = Number.isFinite(latitudInicial) && Number.isFinite(longitudInicial)
+            ? [latitudInicial, longitudInicial]
+            : [-33.0472, -71.6127];
+        const mapa = L.map('map').setView(centroInicial, 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(mapa);
+
+        const marcador = L.marker(centroInicial, { draggable: true }).addTo(mapa);
+
+        function guardarUbicacion(latlng) {
+            latitudInput.value = latlng.lat.toFixed(6);
+            longitudInput.value = latlng.lng.toFixed(6);
+            ubicacionConfirmadaInput.value = 'true';
+            marcador.setLatLng(latlng);
+            mapa.setView(latlng, Math.max(mapa.getZoom(), 13));
+            mensaje.textContent = `Ubicación seleccionada: ${latitudInput.value}, ${longitudInput.value}`;
+        }
+
+        mapa.on('click', (evento) => guardarUbicacion(evento.latlng));
+        marcador.on('dragend', () => guardarUbicacion(marcador.getLatLng()));
+
+        document.getElementById('usar-ubicacion').addEventListener('click', () => {
+            if (!navigator.geolocation) {
+                mensaje.textContent = 'Este navegador no permite obtener la ubicación automáticamente.';
+                return;
+            }
+            mensaje.textContent = 'Solicitando permiso para obtener tu ubicación…';
+            navigator.geolocation.getCurrentPosition(
+                (posicion) => guardarUbicacion({
+                    lat: posicion.coords.latitude,
+                    lng: posicion.coords.longitude
+                }),
+                () => {
+                    mensaje.textContent = 'No se pudo obtener la ubicación. Puedes seleccionarla haciendo clic en el mapa.';
+                },
+                { enableHighAccuracy: true, timeout: 10000 }
+            );
+        });
+
+        document.getElementById('buscar-direccion').addEventListener('click', async (evento) => {
+            const direccion = document.getElementById('direccion').value.trim();
+            if (!direccion) {
+                mensaje.textContent = 'Escribe una dirección antes de buscar.';
+                return;
+            }
+
+            const boton = evento.currentTarget;
+            boton.disabled = true;
+            mensaje.textContent = 'Buscando dirección…';
+            try {
+                const respuesta = await fetch(form.dataset.geocodeUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'X-CSRFToken': form.querySelector('[name=csrfmiddlewaretoken]').value
+                    },
+                    body: new URLSearchParams({ direccion })
+                });
+                const resultado = await respuesta.json();
+                if (!respuesta.ok) {
+                    throw new Error(resultado.error || 'No se pudo encontrar la dirección.');
+                }
+                guardarUbicacion({
+                    lat: Number(resultado.latitud),
+                    lng: Number(resultado.longitud)
+                });
+                mensaje.textContent = `Ubicación encontrada: ${resultado.nombre}`;
+            } catch (error) {
+                mensaje.textContent = error.message || 'No se pudo buscar la dirección.';
+            } finally {
+                boton.disabled = false;
+            }
+        });
+    </script>
+    {% endif %}
+</body>
+</html>
