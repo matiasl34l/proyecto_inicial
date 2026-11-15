@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Eventos Valparaíso</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <link href="https://api.mapbox.com/mapbox-gl-js/v3.35.0/mapbox-gl.css" rel="stylesheet">
     <style>
         * { box-sizing: border-box; }
         body {
@@ -211,83 +211,90 @@
             {% if eventos_sin_coordenadas %}
             <p class="notice">{{ eventos_sin_coordenadas }} evento(s) activo(s) no tienen coordenadas válidas y no pueden aparecer en el mapa.</p>
             {% endif %}
+            {% if not mapbox_access_token %}
+            <p class="notice">Falta configurar el token público de Mapbox. Define MAPBOX_ACCESS_TOKEN y reinicia el servidor.</p>
+            {% endif %}
             <p class="map-legend">Los eventos activos se muestran en el mapa aunque no coincidan con tus gustos.</p>
         </aside>
     </main>
 
     {{ eventos_mapa|json_script:"eventos-mapa-data" }}
     {{ ubicacion_usuario|json_script:"ubicacion-usuario-data" }}
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    {{ mapbox_access_token|json_script:"mapbox-token-data" }}
+    <script src="https://api.mapbox.com/mapbox-gl-js/v3.35.0/mapbox-gl.js"></script>
     <script>
         const eventos = JSON.parse(document.getElementById('eventos-mapa-data').textContent);
         const usuario = JSON.parse(document.getElementById('ubicacion-usuario-data').textContent);
-        const mapa = L.map('map').setView([-33.0472, -71.6127], 13);
-        const marcadores = new Map();
-        const limites = [];
-
-        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19,
-            attribution: '&copy; OpenStreetMap contributors'
-        }).addTo(mapa);
-
-        if (usuario) {
-            const ubicacion = [usuario.latitud, usuario.longitud];
-            const iconoUsuario = L.divIcon({
-                className: '',
-                html: '<div class="user-dot"></div>',
-                iconSize: [16, 16],
-                iconAnchor: [8, 8]
+        const mapboxToken = JSON.parse(document.getElementById('mapbox-token-data').textContent);
+        if (!mapboxToken) {
+            document.querySelectorAll('.focus-event').forEach((boton) => {
+                boton.disabled = true;
             });
-            const marcadorUsuario = L.marker(ubicacion, {
-                icon: iconoUsuario,
-                title: 'Tu ubicación',
-                zIndexOffset: 1000
-            }).addTo(mapa);
-            const popupUsuario = document.createElement('strong');
-            popupUsuario.textContent = `Tu ubicación: ${usuario.nombre}`;
-            marcadorUsuario.bindPopup(popupUsuario);
-            limites.push(ubicacion);
-        }
-
-        for (const evento of eventos) {
-            const contenido = document.createElement('div');
-            const titulo = document.createElement('strong');
-            titulo.textContent = evento.nombre;
-            contenido.append(titulo, document.createElement('br'));
-            contenido.append(document.createTextNode(evento.direccion));
-            contenido.append(document.createElement('br'));
-            contenido.append(document.createTextNode(`${evento.fecha}${evento.hora ? ` · ${evento.hora}` : ''}`));
-            contenido.append(document.createElement('br'));
-
-            const etiquetas = document.createElement('span');
-            etiquetas.textContent = `Etiquetas: ${evento.etiquetas.length ? evento.etiquetas.join(', ') : 'Sin etiquetas activas'}`;
-            contenido.append(etiquetas);
-
-            const marcador = L.marker([evento.latitud, evento.longitud], {
-                title: evento.nombre
-            }).addTo(mapa).bindPopup(contenido);
-            marcadores.set(String(evento.id), marcador);
-            limites.push([evento.latitud, evento.longitud]);
-        }
-
-        if (limites.length > 1) {
-            mapa.fitBounds(limites, { padding: [32, 32], maxZoom: 14 });
-        } else if (limites.length === 1) {
-            mapa.setView(limites[0], 14);
-        }
-
-        document.querySelectorAll('.focus-event').forEach((boton) => {
-            boton.addEventListener('click', () => {
-                const marcador = marcadores.get(boton.dataset.eventId);
-                if (!marcador) {
-                    return;
-                }
-                mapa.flyTo(marcador.getLatLng(), 16, { duration: 0.8 });
-                marcador.openPopup();
+        } else {
+            mapboxgl.accessToken = mapboxToken;
+            const mapa = new mapboxgl.Map({
+                container: 'map',
+                style: 'mapbox://styles/mapbox/streets-v12',
+                center: [-71.6127, -33.0472],
+                zoom: 13
             });
-        });
+            mapa.addControl(new mapboxgl.NavigationControl(), 'top-right');
+            const marcadores = new Map();
+            const limites = new mapboxgl.LngLatBounds();
 
-        window.addEventListener('load', () => mapa.invalidateSize());
+            if (usuario) {
+                const ubicacion = [usuario.longitud, usuario.latitud];
+                const iconoUsuario = document.createElement('div');
+                iconoUsuario.className = 'user-dot';
+                const marcadorUsuario = new mapboxgl.Marker({
+                    element: iconoUsuario,
+                    anchor: 'center'
+                }).setLngLat(ubicacion).addTo(mapa);
+                const popupUsuario = document.createElement('strong');
+                popupUsuario.textContent = `Tu ubicación: ${usuario.nombre}`;
+                marcadorUsuario.setPopup(new mapboxgl.Popup({ offset: 12 }).setDOMContent(popupUsuario));
+                limites.extend(ubicacion);
+            }
+
+            for (const evento of eventos) {
+                const contenido = document.createElement('div');
+                const titulo = document.createElement('strong');
+                titulo.textContent = evento.nombre;
+                contenido.append(titulo, document.createElement('br'));
+                contenido.append(document.createTextNode(evento.direccion));
+                contenido.append(document.createElement('br'));
+                contenido.append(document.createTextNode(`${evento.fecha}${evento.hora ? ` · ${evento.hora}` : ''}`));
+                contenido.append(document.createElement('br'));
+
+                const etiquetas = document.createElement('span');
+                etiquetas.textContent = `Etiquetas: ${evento.etiquetas.length ? evento.etiquetas.join(', ') : 'Sin etiquetas activas'}`;
+                contenido.append(etiquetas);
+
+                const marcador = new mapboxgl.Marker({ color: '#175cd3' })
+                    .setLngLat([evento.longitud, evento.latitud])
+                    .setPopup(new mapboxgl.Popup({ offset: 25 }).setDOMContent(contenido))
+                    .addTo(mapa);
+                marcadores.set(String(evento.id), marcador);
+                limites.extend([evento.longitud, evento.latitud]);
+            }
+
+            if (!limites.isEmpty()) {
+                mapa.fitBounds(limites, { padding: 48, maxZoom: 14 });
+            }
+
+            document.querySelectorAll('.focus-event').forEach((boton) => {
+                boton.addEventListener('click', () => {
+                    const marcador = marcadores.get(boton.dataset.eventId);
+                    if (!marcador) {
+                        return;
+                    }
+                    mapa.flyTo({ center: marcador.getLngLat(), zoom: 16, duration: 800 });
+                    if (!marcador.getPopup().isOpen()) {
+                        marcador.togglePopup();
+                    }
+                });
+            });
+        }
     </script>
 </body>
 </html>

@@ -4,6 +4,7 @@ from urllib.error import URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
@@ -92,6 +93,7 @@ def inicio(request):
             "ubicacion_usuario": ubicacion_usuario,
             "eventos_sin_coordenadas": len(eventos) - len(eventos_mapa),
             "eventos_mapa_ids": [evento['id'] for evento in eventos_mapa],
+            "mapbox_access_token": settings.MAPBOX_ACCESS_TOKEN,
         },
     )
 
@@ -142,7 +144,11 @@ def perfil(request):
         messages.success(request, 'Tus preferencias quedaron guardadas.')
         return redirect('inicio')
 
-    return render(request, 'cultura_app/perfil.html', {'form': form})
+    return render(
+        request,
+        'cultura_app/perfil.html',
+        {'form': form, 'mapbox_access_token': settings.MAPBOX_ACCESS_TOKEN},
+    )
 
 
 @login_required

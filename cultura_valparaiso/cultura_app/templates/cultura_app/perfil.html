@@ -4,7 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Tus preferencias · Cultura Valparaíso</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    {% if mapbox_access_token %}
+    <link href="https://api.mapbox.com/mapbox-gl-js/v3.35.0/mapbox-gl.css" rel="stylesheet">
+    {% endif %}
     <style>
         body { font-family: Arial, sans-serif; max-width: 900px; margin: 2rem auto; padding: 0 1rem; }
         #map { height: 400px; width: 100%; margin: 1rem 0; }
@@ -59,9 +61,13 @@
                 {{ form.longitud.errors }}
                 {{ form.ubicacion_confirmada }}
                 {{ form.ubicacion_confirmada.errors }}
+                {% if mapbox_access_token %}
                 <div id="map" aria-label="Selecciona tu ubicación en el mapa"></div>
+                {% else %}
+                <p class="errorlist">No se puede mostrar el mapa hasta configurar el token público de Mapbox. También puedes buscar la dirección o usar la ubicación de tu dispositivo.</p>
+                {% endif %}
                 <small>
-                    Mapa y búsqueda de direcciones: ©
+                    Mapa: © Mapbox y
                     <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap contributors</a>.
                     Al buscar, la dirección se envía al servicio Nominatim de OpenStreetMap.
                 </small>
@@ -84,37 +90,53 @@
     </main>
 
     {% if not cuenta_inactiva %}
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    {{ mapbox_access_token|json_script:"mapbox-token-data" }}
+    {% if mapbox_access_token %}
+    <script src="https://api.mapbox.com/mapbox-gl-js/v3.35.0/mapbox-gl.js"></script>
+    {% endif %}
     <script>
         const form = document.getElementById('perfil-form');
         const latitudInput = document.getElementById('id_latitud');
         const longitudInput = document.getElementById('id_longitud');
         const ubicacionConfirmadaInput = document.getElementById('id_ubicacion_confirmada');
         const mensaje = document.getElementById('ubicacion-mensaje');
+        let mapa = null;
+        let marcador = null;
+
+        {% if mapbox_access_token %}
+        mapboxgl.accessToken = JSON.parse(document.getElementById('mapbox-token-data').textContent);
         const latitudInicial = Number(latitudInput.value);
         const longitudInicial = Number(longitudInput.value);
-        const centroInicial = Number.isFinite(latitudInicial) && Number.isFinite(longitudInicial)
-            ? [latitudInicial, longitudInicial]
-            : [-33.0472, -71.6127];
-        const mapa = L.map('map').setView(centroInicial, 13);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19,
-            attribution: '&copy; OpenStreetMap contributors'
-        }).addTo(mapa);
-
-        const marcador = L.marker(centroInicial, { draggable: true }).addTo(mapa);
+        const coordenadasIniciales = Number.isFinite(latitudInicial) && Number.isFinite(longitudInicial)
+            ? [longitudInicial, latitudInicial]
+            : [-71.6127, -33.0472];
+        mapa = new mapboxgl.Map({
+            container: 'map',
+            style: 'mapbox://styles/mapbox/streets-v12',
+            center: coordenadasIniciales,
+            zoom: 13
+        });
+        mapa.addControl(new mapboxgl.NavigationControl(), 'top-right');
+        marcador = new mapboxgl.Marker({ draggable: true })
+            .setLngLat(coordenadasIniciales)
+            .addTo(mapa);
+        mapa.on('click', (evento) => guardarUbicacion(evento.lngLat));
+        marcador.on('dragend', () => guardarUbicacion(marcador.getLngLat()));
+        {% endif %}
 
         function guardarUbicacion(latlng) {
-            latitudInput.value = latlng.lat.toFixed(6);
-            longitudInput.value = latlng.lng.toFixed(6);
+            latitudInput.value = Number(latlng.lat).toFixed(6);
+            longitudInput.value = Number(latlng.lng).toFixed(6);
             ubicacionConfirmadaInput.value = 'true';
-            marcador.setLatLng(latlng);
-            mapa.setView(latlng, Math.max(mapa.getZoom(), 13));
+            if (marcador && mapa) {
+                marcador.setLngLat([Number(latlng.lng), Number(latlng.lat)]);
+                mapa.easeTo({
+                    center: [Number(latlng.lng), Number(latlng.lat)],
+                    zoom: Math.max(mapa.getZoom(), 13)
+                });
+            }
             mensaje.textContent = `Ubicación seleccionada: ${latitudInput.value}, ${longitudInput.value}`;
         }
-
-        mapa.on('click', (evento) => guardarUbicacion(evento.latlng));
-        marcador.on('dragend', () => guardarUbicacion(marcador.getLatLng()));
 
         document.getElementById('usar-ubicacion').addEventListener('click', () => {
             if (!navigator.geolocation) {
