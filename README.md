@@ -53,5 +53,4 @@ Password
 
 Pruebas automatizadas:
 Para ejecutar las 26 pruebas unitarias y de integración (incluidos los casos de prueba Sansano 1 y Sansano 2):
-bash
 python manage.py test
