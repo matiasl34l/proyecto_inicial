@@ -51,3 +51,21 @@ class Evento(models.Model):
 
     def __str__(self):
         return self.nombre
+
+
+class Guardado(models.Model):
+    usuario = models.ForeignKey(Usuario, on_delete=models.CASCADE, related_name='guardados')
+    evento = models.ForeignKey(Evento, on_delete=models.CASCADE, related_name='guardados')
+    fecha_agregado = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-fecha_agregado']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['usuario', 'evento'],
+                name='guardado_unico_por_usuario_y_evento',
+            ),
+        ]
+
+    def __str__(self):
+        return f'{self.usuario} guardó {self.evento}'

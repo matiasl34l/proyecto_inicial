@@ -54,7 +54,7 @@
             border: 1px solid #98a2b3;
             border-radius: 6px;
         }
-        .search-form button, .focus-event, .logout-button {
+        .search-form button, .focus-event, .save-event, .logout-button {
             padding: .5rem .65rem;
             color: #fff;
             border: 0;
@@ -81,7 +81,9 @@
         }
         .event-card h3 { margin: 0 0 .35rem; font-size: .95rem; }
         .event-card p { margin: .2rem 0; color: #475467; font-size: .85rem; }
-        .focus-event { margin-top: .4rem; }
+        .focus-event, .save-event { margin-top: .4rem; }
+        .save-event-form { display: inline; margin: 0; }
+        .save-event.saved { background: #475467; }
         details { border-top: 1px solid #dce3ec; }
         summary {
             padding: .8rem 0;
@@ -133,6 +135,7 @@
         <h1>Cultura Valparaíso</h1>
         <nav>
             <span>Hola, <strong>{{ usuario.nombre }}</strong></span>
+            <a href="{% url 'guardados' %}">Mis guardados</a>
             <a href="{% url 'perfil' %}">Mis preferencias</a>
             <form method="post" action="{% url 'salir' %}">
                 {% csrf_token %}
@@ -177,6 +180,11 @@
                     {% else %}
                     <p class="empty-message">Este evento no tiene una ubicación válida en el mapa.</p>
                     {% endif %}
+                    <form class="save-event-form" method="post" action="{% url 'guardar_evento' evento.pk %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                        <button class="save-event{% if evento.pk in guardados_ids %} saved{% endif %}" type="submit">{% if evento.pk in guardados_ids %}Quitar de guardados{% else %}Guardar{% endif %}</button>
+                    </form>
                 </article>
                 {% empty %}
                 <p class="empty-message">No se encontraron eventos activos con “{{ consulta }}”.</p>
@@ -199,6 +207,11 @@
                         {% endfor %}
                     </p>
                     <button class="focus-event" type="button" data-event-id="{{ recomendacion.evento.pk }}">Ver en el mapa</button>
+                    <form class="save-event-form" method="post" action="{% url 'guardar_evento' recomendacion.evento.pk %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                        <button class="save-event{% if recomendacion.evento.pk in guardados_ids %} saved{% endif %}" type="submit">{% if recomendacion.evento.pk in guardados_ids %}Quitar de guardados{% else %}Guardar{% endif %}</button>
+                    </form>
                 </article>
                 {% empty %}
                 <p class="empty-message">Aún no hay eventos que coincidan con tus gustos y distancia. Usa Buscar para explorar todos los eventos.</p>
