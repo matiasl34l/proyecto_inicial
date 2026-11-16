@@ -2,19 +2,15 @@ CultiValpo - Grupo 3
 Aplicación web desarrollada en Django para recomendar eventos culturales en Valparaíso según los gustos y la ubicación de cada estudiante (Mapbox GL JS, Nominatim y fórmula de Haversine).
 
 1. Clonar repositorio:
-bash
 git clone https://github.com/matiasl34l/proyecto_inicial.git
 
 Entrar al directorio:
-bash
 cd proyecto_inicial
 
 2. Instalar Django:
-bash
 pip install django
 
 Verificar instalación:
-bash
 pip show django
 
 3. Configurar token público de Mapbox:
@@ -25,21 +21,17 @@ powershell
 $env:MAPBOX_ACCESS_TOKEN="tu_token_publico_de_mapbox"
 
 En Linux o macOS:
-bash
 export MAPBOX_ACCESS_TOKEN="tu_token_publico_de_mapbox"
 
 4. Aplicar migraciones:
 Entrar al directorio donde se encuentra manage.py:
-bash
 cd cultura_valparaiso
 
 Ejecutar (crea la base de datos SQLite y precarga las etiquetas culturales iniciales):
-bash
 python manage.py migrate
 
 5. Iniciar servidor:
 Ejecutar:
-bash
 python manage.py runserver
 
 Abrir http://127.0.0.1:8000/ en cualquier navegador web.
@@ -51,7 +43,7 @@ Para cargar eventos o revisar etiquetas, usuarios y eventos guardados, acceder a
 http://127.0.0.1:8000/admin
 
 Crear superusuario (si no existe):
-bash
+
 python manage.py createsuperuser
 
 Completar:
