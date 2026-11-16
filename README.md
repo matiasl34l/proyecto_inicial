@@ -1,3 +1,6 @@
+CultiValpo - Grupo 3 
+Aplicación web desarrollada en Django para recomendar eventos culturales en Valparaíso según los gustos y la ubicación de cada estudiante (Mapbox GL JS, Nominatim y fórmula de Haversine).
+
 1. Clonar repositorio:
 bash
 git clone https://github.com/matiasl34l/proyecto_inicial.git
@@ -14,33 +17,40 @@ Verificar instalación:
 bash
 pip show django
 
-3. Aplicar migraciones
+3. Configurar token público de Mapbox:
+Antes de iniciar el servidor, definir la variable de entorno MAPBOX_ACCESS_TOKEN:
+
+En Windows (PowerShell):
+powershell
+$env:MAPBOX_ACCESS_TOKEN="tu_token_publico_de_mapbox"
+
+En Linux o macOS:
+bash
+export MAPBOX_ACCESS_TOKEN="tu_token_publico_de_mapbox"
+
+4. Aplicar migraciones:
 Entrar al directorio donde se encuentra manage.py:
 bash
 cd cultura_valparaiso
 
-Ejecutar:
-bash
-python manage.py makemigrations
-
-Luego:
+Ejecutar (crea la base de datos SQLite y precarga las etiquetas culturales iniciales):
 bash
 python manage.py migrate
 
-4. Iniciar servidor
+5. Iniciar servidor:
 Ejecutar:
 bash
 python manage.py runserver
 
-IMPORTANTE: Abrir http://127.0.0.1:8000/ desde visual studio code, desde un navegador no se verá.
+Abrir http://127.0.0.1:8000/ en cualquier navegador web.
 
-Datos de prueba:
-Para probar la funcionalidad principal se deben crear usuarios y eventos desde el panel de administración.
-Acceder a:
+Uso y datos de prueba:
+Para probar la aplicación como estudiante, entrar a http://127.0.0.1:8000/ y seleccionar "Crear cuenta" para registrar un usuario, elegir al menos 2 gustos, seleccionar una ubicación en el mapa y definir la distancia máxima en kilómetros.
+
+Para cargar eventos o revisar etiquetas, usuarios y eventos guardados, acceder al panel de administración:
 http://127.0.0.1:8000/admin
 
-Crear superusuario
-Si no existe:
+Crear superusuario (si no existe):
 bash
 python manage.py createsuperuser
 
@@ -49,52 +59,7 @@ Username
 Email
 Password
 
-Usuarios de prueba:
-En el panel de admin en el apartado de "Etiquetas", en caso de no existir las etiquetas "Fotografía" y "Festival" agregarlas seleccionando "ADD ETIQUETA", si ya existian, en "Home" ir al apartado "Usuario" seleccionar "+Add" e ingresar:
-Usuario 1
-Nombre: Sansano 1
-Gustos: Arte, Deportes, Naturaleza, Fiesta, Social, Comunidad, Aire Libre, Feria, Bienestar, Creatividad, Fotografía
-Latitud: -33.0482
-Longitud: -71.6107
-Distancia máxima: 20
-Luego seleccionar "Save and add another"
-Usuario 2
-Nombre: Sansano 2
-Gustos: Seleccionar "Choose all gustos"
-Latitud: -33.041
-Longitud: -71.615
-Distancia máxima: 30
-Luego en "Home" en el apartado de "Usuario" seleccionar "Change" y desmarcar en "ACTIVO" a sansano 2, luego de probar a sansano 1 desmarcar a sansano 1 y marcar a sansao 2, luego de cada vez que se marque o desmarque seleccionar "Save"
-
-Eventos de prueba:
-En el panel de admin en el apartado de "Eventos" seleccionar "+Add" e ingresar:
-Nombre: Festival Rock Costero
-Fecha: Cualquiera
-Hora: Cualquiera
-Dirección: Av. Brasil
-Descripcion: Cualquiera
-Latitud: -33.045
-Longitud: -71.62
-Etiquetas: Entretenimiento, Música, Festival
-Save and add another
-
-Nombre: Expo Fotografía
-Fecha: Cualquiera
-Hora: Cualquiera
-Dirección: Cerro Alegre
-Descripcion: Cualquiera
-Latitud: -33.041
-Longitud: -71.628
-Etiquetas: Arte, Cultura, Fotografía
-Save and add another
-
-Nombre: Feria Gastronomica
-Fecha: Cualquiera
-Hora: Cualquiera
-Dirección: Muelle Prat
-Descripcion: Cualquiera
-Latitud: -33.039
-Longitud: -71.625
-Etiquetas: Gastronomía, Aire Libre, Feria, Festival
-Save
-Luego seleccionar "View Site" para ver en el mapa el caso de sansano 1, luego volver al panel de admin http://127.0.0.1:8000/admin para ver el caso de sansano 2 explicado anteriormente
+Pruebas automatizadas:
+Para ejecutar las 26 pruebas unitarias y de integración (incluidos los casos de prueba Sansano 1 y Sansano 2):
+bash
+python manage.py test
