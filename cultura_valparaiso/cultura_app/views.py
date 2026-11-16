@@ -12,12 +12,13 @@ from django.contrib.auth.forms import AuthenticationForm
 from django.core.cache import cache
 from django.db.models import Prefetch, Q
 from django.http import JsonResponse
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
 from .forms import PreferenciasForm, RegistroForm
-from .models import Etiqueta, Evento, Usuario
+from .models import Etiqueta, Evento, Guardado, Usuario
 from .recomendaciones import recomendar
 
 
@@ -81,10 +82,15 @@ def inicio(request):
         'longitud': usuario.longitud,
     }
 
+    guardados_ids = set(
+        Guardado.objects.filter(usuario=usuario).values_list('evento_id', flat=True)
+    )
+
     return render(
         request,
         "cultura_app/index.html",
         {
+            "guardados_ids": guardados_ids,
             "eventos_mapa": eventos_mapa,
             "resultados_busqueda": resultados_busqueda,
             "consulta": consulta,
@@ -230,3 +236,49 @@ def buscar_direccion(request):
 def salir(request):
     logout(request)
     return redirect('ingresar')
+
+
+@login_required
+@require_POST
+def guardar_evento(request, evento_id):
+    usuario = Usuario.objects.filter(cuenta=request.user).first()
+    if usuario is None:
+        return redirect('perfil')
+    if not usuario.activo:
+        return render(request, 'cultura_app/perfil.html', {'cuenta_inactiva': True}, status=403)
+
+    evento = get_object_or_404(Evento, pk=evento_id, activo=True)
+    guardado, creado = Guardado.objects.get_or_create(usuario=usuario, evento=evento)
+    if creado:
+        messages.success(request, f'Guardaste "{evento.nombre}" en tu lista.')
+    else:
+        guardado.delete()
+        messages.success(request, f'Quitaste "{evento.nombre}" de tu lista.')
+
+    destino = request.POST.get('next', '')
+    if not url_has_allowed_host_and_scheme(destino, allowed_hosts={request.get_host()}):
+        destino = reverse('inicio')
+    return redirect(destino)
+
+
+@login_required
+def guardados(request):
+    usuario = Usuario.objects.filter(cuenta=request.user).first()
+    if usuario is None:
+        return redirect('perfil')
+    if not usuario.activo:
+        return render(request, 'cultura_app/perfil.html', {'cuenta_inactiva': True}, status=403)
+
+    lista = (
+        Guardado.objects.filter(usuario=usuario, evento__activo=True)
+        .select_related('evento')
+        .prefetch_related(
+            Prefetch(
+                'evento__etiquetas',
+                queryset=Etiqueta.objects.filter(activo=True),
+                to_attr='etiquetas_activas',
+            )
+        )
+        .order_by('evento__fecha', 'evento__hora')
+    )
+    return render(request, 'cultura_app/guardados.html', {'usuario': usuario, 'guardados': lista})

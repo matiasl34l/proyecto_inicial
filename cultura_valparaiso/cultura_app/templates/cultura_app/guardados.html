@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Mis guardados · Cultura Valparaíso</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { margin: 0; color: #172033; font-family: Arial, sans-serif; font-size: 14px; background: #f3f6fa; }
+        header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .65rem 1rem; background: #fff; border-bottom: 1px solid #dce3ec; }
+        header h1 { margin: 0; font-size: 1.15rem; }
+        header nav { display: flex; align-items: center; gap: .75rem; }
+        header a { color: #175cd3; }
+        header form { margin: 0; }
+        button { font: inherit; cursor: pointer; padding: .5rem .65rem; color: #fff; border: 0; border-radius: 6px; background: #175cd3; }
+        main { max-width: 720px; margin: 1rem auto; padding: 0 1rem; }
+        main h2 { margin: 0 0 .8rem; }
+        .event-card { padding: .8rem; margin-bottom: .6rem; background: #fff; border: 1px solid #dce3ec; border-radius: 10px; }
+        .event-card h3 { margin: 0 0 .35rem; font-size: 1rem; }
+        .event-card p { margin: .2rem 0; color: #475467; }
+        .event-card form { margin: .4rem 0 0; }
+        .event-card button { background: #475467; }
+        .empty-message { color: #475467; line-height: 1.5; }
+    </style>
+</head>
+<body>
+    {% if messages %}
+    {% for message in messages %}<p role="status">{{ message }}</p>{% endfor %}
+    {% endif %}
+
+    <header>
+        <h1>Cultura Valparaíso</h1>
+        <nav>
+            <span>Hola, <strong>{{ usuario.nombre }}</strong></span>
+            <a href="{% url 'inicio' %}">Volver al mapa</a>
+            <a href="{% url 'perfil' %}">Mis preferencias</a>
+            <form method="post" action="{% url 'salir' %}">
+                {% csrf_token %}
+                <button type="submit">Cerrar sesión</button>
+            </form>
+        </nav>
+    </header>
+
+    <main>
+        <h2>Mis guardados</h2>
+        {% for guardado in guardados %}
+        <article class="event-card">
+            <h3>{{ guardado.evento.nombre }}</h3>
+            <p>{{ guardado.evento.fecha|date:"d/m/Y" }}{% if guardado.evento.hora %} · {{ guardado.evento.hora|time:"H:i" }}{% endif %}</p>
+            <p>{{ guardado.evento.direccion }}</p>
+            <p>
+                {% for etiqueta in guardado.evento.etiquetas_activas %}
+                    {{ etiqueta.nombre }}{% if not forloop.last %}, {% endif %}
+                {% empty %}
+                    Sin etiquetas activas
+                {% endfor %}
+            </p>
+            <form method="post" action="{% url 'guardar_evento' guardado.evento.pk %}">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{% url 'guardados' %}">
+                <button type="submit">Quitar de guardados</button>
+            </form>
+        </article>
+        {% empty %}
+        <p class="empty-message">Aún no has guardado eventos. Vuelve al mapa y usa el botón "Guardar" en las recomendaciones o en los resultados de búsqueda.</p>
+        {% endfor %}
+    </main>
+</body>
+</html>

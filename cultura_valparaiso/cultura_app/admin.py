@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Etiqueta, Evento, Usuario
+from .models import Etiqueta, Evento, Guardado, Usuario
 
 
 class ActivacionAdminMixin:
@@ -39,3 +39,10 @@ class UsuarioAdmin(ActivacionAdminMixin, admin.ModelAdmin):
 @admin.register(Etiqueta)
 class EtiquetaAdmin(ActivacionAdminMixin, admin.ModelAdmin):
     search_fields = ('nombre',)
+
+
+@admin.register(Guardado)
+class GuardadoAdmin(admin.ModelAdmin):
+    list_display = ('usuario', 'evento', 'fecha_agregado')
+    list_filter = ('usuario',)
+    search_fields = ('usuario__nombre', 'evento__nombre')
